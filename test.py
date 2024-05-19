@@ -13,6 +13,7 @@ model = model.cuda()
 checkpoint = torch.load('./model/model_best.pth.tar')
 model.load_state_dict(checkpoint['state_dict'])
 
+# 旧版本的图像预处理和推断代码：
 # for i in range(len(img_paths)):
 #     img = 255.0 * F.to_tensor(Image.open(img_paths[i]).convert('RGB'))
 

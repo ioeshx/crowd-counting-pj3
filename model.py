@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 from torchvision import models
 
-
+# 采用CSRnet-A 
 class CSRNet(nn.Module):
     def __init__(self, load_weights=False):
         super(CSRNet, self).__init__()

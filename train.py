@@ -36,7 +36,7 @@ class ImgDataset(Dataset):
     def __init__(self, img_dir, gt_dir, shape=None, shuffle=True, transform=None, train=False, batch_size=1, num_workers=4):
         self.img_dir = img_dir
         self.gt_dir = gt_dir
-        self.transform = transform
+        self.transform = transform  # 用于数据增强的transformer
         self.train = train
         self.shape = shape
         self.batch_size = batch_size
@@ -64,7 +64,7 @@ class ImgDataset(Dataset):
             img = self.transform(img)
         return img, target
 
-
+# 参数设置
 lr = 1e-7
 original_lr = lr
 batch_size = 1
@@ -72,11 +72,13 @@ momentum = 0.95
 decay = 5*1e-4
 epochs = 400
 steps = [-1, 1, 100, 150]
-scales = [1, 1, 1, 1]
+scales = [1, 1, 1, 1]   # TODO2:scales是否需要调整？
 workers = 4
 seed = time.time()
 print_freq = 30
 img_dir = "./dataset/train/rgb/"
+# 新增红外图像路径 Thermal Imaging Radiometer
+t_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
 pre = None
 task = ""
@@ -102,7 +104,7 @@ def main():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
                              0.229, 0.224, 0.225]),
     ])
-
+    # TODO1:这里只用到了RGB图像
     dataset = ImgDataset(
         img_dir,
         gt_dir, transform=transform, train=True)

@@ -4,6 +4,11 @@ import xml.etree.ElementTree as ET
 import h5py
 from scipy.ndimage.filters import gaussian_filter
 
+# 我们应该用不到这个文件，因为助教已经处理好了HDF5文件，我们只需要用这些文件训练模型即可
+
+# 这个文件的作用
+# 将xml标注文件解析为密度图，并将密度图保存为HDF5文件。这些密度图可以用于训练CSRnet
+# density_map就是一个图像长和宽的二维矩阵。(x,y)=1表示在图像上的(x,y)位置有一个人。然后用gaussian_filter对密度图进行平滑处理
 
 def parse_xml(xml_file, image_shape):
     tree = ET.parse(xml_file)

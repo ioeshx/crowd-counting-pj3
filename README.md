@@ -5,7 +5,7 @@ This repository contains the baseline code for the challenge titled "Drone Persp
 ### Repository Structure
 
 - **`model/`**: Directory to store trained models. Created during setup to separate trained weights and configurations from source code.
-- **`train.py`**: Script responsible for training the crowd counting model using provided or custom datasets. It implements necessary data preprocessing, model architecture, and training loop.
+- **`train.py`**: Script responsible for training the crowd counting model using provided or custom datasets. It implements necessary **data preprocessing, model architecture, and training loop**.
 - **`test.py`**: Script designed to evaluate the trained model on a test dataset and generate output predictions, which are then redirected to `ans.txt` for submission or evaluation purposes.
 
 ### Quick Start Guide
@@ -23,6 +23,7 @@ This repository contains the baseline code for the challenge titled "Drone Persp
    ```
 
 3. **Create Model Directory** (if not done during cloning):
+   
    ```bash
    mkdir model
    ```
@@ -44,15 +45,15 @@ python test.py > ans.txt
 This command runs the testing script and redirects its output to `ans.txt`, which typically contains the predicted counts per image or video frame.
 
 ### Experimental Requirements
-- Develop a solution surpassing or equaling the baseline - 4 points
+- Develop a solution **surpassing or equaling the baseline** - 4 points
 - Competition results: Determined by ranking and score - 10 points
 - Effort and innovation in method: Reflected in the report - 6 points
-- Extra points: Pre-presentation plan scheduled for 07/06 - 2 points (as it's hard to max out)
+- Extra points: Pre-presentation **plan scheduled for 07/06** - 2 points (as it's hard to max out)
 
 Final Score: max(20, s1+s2+s3+s4), total of 20 points.
 
 Competition Deadline: June 2, 2024 ‼️
-Submit A-board's best ranking and score screenshots, txt files to eLearning.
+**Submit A-board's best ranking and score screenshots, txt files to eLearning.**
 
 Report Deadline: June 14, 2024 ‼️
 Submit B-board result screenshots, final code, project report (4 pages), PPT (if applicable) to eLearning.
