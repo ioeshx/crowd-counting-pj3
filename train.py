@@ -67,7 +67,7 @@ class ImgDataset(Dataset):
 # 参数设置
 lr = 1e-7
 original_lr = lr
-batch_size = 1
+batch_size = 1  # 修改为4，加快训练
 momentum = 0.95
 decay = 5*1e-4
 epochs = 400
@@ -78,7 +78,7 @@ seed = time.time()
 print_freq = 30
 img_dir = "./dataset/train/rgb/"
 # 新增红外图像路径 Thermal Imaging Radiometer
-t_dir = "./dataset/train/tir/"
+tir_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
 pre = None
 task = ""
