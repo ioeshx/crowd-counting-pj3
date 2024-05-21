@@ -12,6 +12,11 @@ import h5py
 import cv2
 import shutil
 from model import CSRNet
+import matplotlib.pyplot as plt
+import json
+import datetime
+
+
 
 
 def save_checkpoint(state, is_best, task_id, filename='checkpoint.pth.tar', save_dir='./model/'):  # 添加保存目录参数
@@ -118,26 +123,16 @@ def main():
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
     val_loader = DataLoader(
         val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers)
-
-    if pre:
-        if os.path.isfile(pre):
-            print("=> loading checkpoint '{}'".format(pre))
-            checkpoint = torch.load(pre)
-            start_epoch = checkpoint['epoch']
-            best_prec1 = checkpoint['best_prec1']
-            model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> loaded checkpoint '{}' (epoch {})"
-                  .format(pre, checkpoint['epoch']))
-        else:
-            print("=> no checkpoint found at '{}'".format(pre))
-
+    
+    MAEs = {}
     for epoch in range(start_epoch, epochs):
 
         adjust_learning_rate(optimizer, epoch)
 
         train(model, criterion, optimizer, epoch, train_loader)
         prec1 = validate(model, val_loader)
+
+        MAEs[epoch] = prec1 # 统计MAE
 
         is_best = prec1 < best_prec1
         best_prec1 = min(prec1, best_prec1)
@@ -150,6 +145,23 @@ def main():
             'best_prec1': best_prec1,
             'optimizer': optimizer.state_dict(),
         }, is_best, task)
+    
+    # 绘制MAEs曲线
+    # 确保在使用 numpy 之前将张量移动到 CPU
+
+    epochs_list_cpu = torch.tensor(list(MAEs.keys())).cpu().numpy()
+    maes_list_cpu = torch.tensor(list(MAEs.values())).cpu().numpy()
+
+    plt.plot(epochs_list_cpu, maes_list_cpu)
+    plt.xlabel('Epoch')
+    plt.ylabel('MAE')
+    plt.title('MAE of each epoch')
+
+    if not os.path.exists('pic'):
+        os.makedirs('pic')
+    # 获取当前时间
+    current_time_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+    plt.savefig('pic/MAEs-{current_time_str}.png'.format(current_time_str=current_time_str))
 
 
 def train(model, criterion, optimizer, epoch, train_loader):
