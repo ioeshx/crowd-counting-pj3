@@ -12,6 +12,7 @@ import h5py
 import cv2
 import shutil
 from model import CSRNet
+import matplotlib.pyplot as plt
 
 
 def save_checkpoint(state, is_best, task_id, filename='checkpoint.pth.tar', save_dir='./model/'):  # 添加保存目录参数
@@ -23,46 +24,60 @@ def save_checkpoint(state, is_best, task_id, filename='checkpoint.pth.tar', save
         shutil.copyfile(checkpoint_path, best_model_path)
 
 
-def load_data(img_path, gt_path, train=True):
-    img = Image.open(img_path).convert('RGB')
+def load_data(rgb_path, tir_path, gt_path, train=True):
+    rgb_img = Image.open(rgb_path).convert('RGB')
+    tir_img = Image.open(tir_path).convert('RGB')  # 假设红外图像也是3通道
     gt_file = h5py.File(gt_path)
     target = np.asarray(gt_file['density'])
     target = cv2.resize(
-        target, (target.shape[1]//8, target.shape[0]//8), interpolation=cv2.INTER_CUBIC)*64
-    return img, target
+        target, (target.shape[1] // 8, target.shape[0] // 8), interpolation=cv2.INTER_CUBIC) * 64
+
+    return rgb_img, tir_img, target
+
 
 
 class ImgDataset(Dataset):
-    def __init__(self, img_dir, gt_dir, shape=None, shuffle=True, transform=None, train=False, batch_size=1, num_workers=4):
-        self.img_dir = img_dir
+    def __init__(self, rgb_dir, tir_dir, gt_dir, shape=None, shuffle=True, transform_rgb=None, transform_tir=None,train=False, batch_size=1, num_workers=4):
+        self.rgb_dir = rgb_dir
+        self.tir_dir = tir_dir
         self.gt_dir = gt_dir
-        self.transform = transform  # 用于数据增强的transformer
+        self.transform_rgb = transform_rgb  # 用于数据增强的transformer
+        self.transform_tir = transform_tir
         self.train = train
         self.shape = shape
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-        self.img_paths = [os.path.join(img_dir, filename) for filename in os.listdir(
-            img_dir) if filename.endswith('.jpg')]
+        self.rgb_paths = [os.path.join(rgb_dir, filename) for filename in os.listdir(rgb_dir) if filename.endswith('.jpg')]
+        self.tir_paths = [os.path.join(tir_dir, filename) for filename in os.listdir(tir_dir) if filename.endswith('.jpg')]
 
         if shuffle:
-            random.shuffle(self.img_paths)
+            combined = list(zip(self.rgb_paths, self.tir_paths))
+            random.shuffle(combined)
+            self.rgb_paths, self.tir_paths = zip(*combined)
 
-        self.nSamples = len(self.img_paths)
+        self.nSamples = len(self.rgb_paths)
 
     def __len__(self):
         return self.nSamples
 
     def __getitem__(self, index):
         assert index <= len(self), 'index range error'
-        img_path = self.img_paths[index]
-        img_name = os.path.basename(img_path)
+        rgb_path = self.rgb_paths[index]
+        rgb_name = os.path.basename(rgb_path)
         gt_path = os.path.join(
-            self.gt_dir, os.path.splitext(img_name)[0] + '.h5')
-        img, target = load_data(img_path, gt_path, self.train)
-        if self.transform is not None:
-            img = self.transform(img)
+            self.gt_dir, os.path.splitext(rgb_name)[0] + '.h5')
+        tir_path = self.tir_paths[index]
+        rgb_img, tir_img, target = load_data(rgb_path, tir_path, gt_path, self.train)
+
+        if self.transform_rgb is not None and self.transform_tir is not None:
+            rgb_img = self.transform_rgb(rgb_img)
+            tir_img = self.transform_tir(tir_img)
+
+        img = torch.cat((rgb_img, tir_img), dim=0)  # 将两个3通道图像合并成一个6通道图像
+
         return img, target
+
 
 # 参数设置
 lr = 1e-7
@@ -99,15 +114,21 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr,
                                 momentum=momentum,
                                 weight_decay=decay)
-    transform = transforms.Compose([
+    transform_rgb = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
                              0.229, 0.224, 0.225]),
     ])
+    # 这个transformer正确吗？
+    transform_tir = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+    ])
     # TODO1:这里只用到了RGB图像
     dataset = ImgDataset(
-        img_dir,
-        gt_dir, transform=transform, train=True)
+        img_dir, tir_dir,
+        gt_dir,transform_rgb=transform_rgb, transform_tir=transform_tir,train=True
+    )
 
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
@@ -117,6 +138,7 @@ def main():
     val_loader = DataLoader(
         val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers)
 
+    # pre 是什么的路径？ checkpoint!
     if pre:
         if os.path.isfile(pre):
             print("=> loading checkpoint '{}'".format(pre))
@@ -130,12 +152,15 @@ def main():
         else:
             print("=> no checkpoint found at '{}'".format(pre))
 
+    MAEs = {}
     for epoch in range(start_epoch, epochs):
 
         adjust_learning_rate(optimizer, epoch)
 
         train(model, criterion, optimizer, epoch, train_loader)
         prec1 = validate(model, val_loader)
+
+        MAEs[epoch] = prec1 # 统计MAE
 
         is_best = prec1 < best_prec1
         best_prec1 = min(prec1, best_prec1)
@@ -148,6 +173,22 @@ def main():
             'best_prec1': best_prec1,
             'optimizer': optimizer.state_dict(),
         }, is_best, task)
+    
+    # 绘制MAEs曲线
+    # 确保在使用 numpy 之前将张量移动到 CPU
+    epochs_list_cpu = torch.tensor(list(MAEs.keys())).cpu().numpy()
+    maes_list_cpu = torch.tensor(MAEs.values()).cpu().numpy()
+
+    plt.plot(epochs_list_cpu, maes_list_cpu)
+    plt.xlabel('Epoch')
+    plt.ylabel('MAE')
+    plt.title('MAE of each epoch')
+
+    if not os.path.exists('pic'):
+        os.makedirs('pic')
+    
+    plt.savefig('pic/MAEs.png')
+    
 
 
 def train(model, criterion, optimizer, epoch, train_loader):

@@ -6,7 +6,9 @@ from torchvision import transforms
 from torch.autograd import Variable
 
 test_path = "./dataset/test/rgb/"
+test_tir_path = "./dataset/test/tir/"
 img_paths = [f"{test_path}{i}.jpg" for i in range(1, 1001)]
+tir_paths = [f'{test_tir_path}{i}R.jpg' for i in range(1, 1001)]
 
 model = CSRNet()
 model = model.cuda()
@@ -26,14 +28,24 @@ model.load_state_dict(checkpoint['state_dict'])
 #     ans = "{:.2f}".format(ans.item())
 #     print(f"{i+1},{ans}")
 
-transform = transforms.Compose([
+transform_rgb = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
         0.229, 0.224, 0.225]),
 ])
+# 红外光的transformer
+transform_tir = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+])
 
 for i in range(len(img_paths)):
-    img = transform((Image.open(img_paths[i]).convert('RGB')))
+    rgb_img = transform_rgb(Image.open(img_paths[i]).convert('RGB'))
+    tir_img = transform_tir(Image.open(tir_paths[i]).convert('RGB'))
+
+    # Concatenate RGB and TIR images along the channel dimension
+    img = torch.cat((rgb_img, tir_img), dim=0)
+
     img = img.cuda()
     img = Variable(img)
     output = model(img.unsqueeze(0))

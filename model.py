@@ -10,16 +10,33 @@ class CSRNet(nn.Module):
         self.frontend_feat = [64, 64, 'M', 128, 128,
                               'M', 256, 256, 256, 'M', 512, 512, 512]
         self.backend_feat = [512, 512, 512, 256, 128, 64]
-        self.frontend = make_layers(self.frontend_feat)
+        # 修改前端层的输入通道数为6
+        self.frontend = make_layers(self.frontend_feat, in_channels=6)
         self.backend = make_layers(
             self.backend_feat, in_channels=512, dilation=True)
         self.output_layer = nn.Conv2d(64, 1, kernel_size=1)
         if not load_weights:
             mod = models.vgg16(pretrained=True)
             self._initialize_weights()
-            for i, (key, value) in enumerate(list(self.frontend.state_dict().items())):
-                self.frontend.state_dict()[key].data[:] = list(
-                    mod.state_dict().items())[i][1].data[:]
+            # 从预训练模型加载权重
+            pretrained_state_dict = mod.features.state_dict()
+            frontend_state_dict = self.frontend.state_dict()
+
+            # 处理预训练权重，使其适应前6个通道
+            for key in frontend_state_dict:
+                if 'weight' in key and frontend_state_dict[key].shape != pretrained_state_dict.get(key, frontend_state_dict[key]).shape:
+                    if key == '0.weight':  # 只调整第一个卷积层的权重
+                        pretrained_weight = pretrained_state_dict[key]
+                        # 构建新的权重张量，增加通道数
+                        new_weight = torch.zeros_like(frontend_state_dict[key])
+                        new_weight[:, :3, :, :] = pretrained_weight  # 前3个通道使用预训练权重
+                        new_weight[:, 3:, :, :] = pretrained_weight  # 后3个通道复制前3个通道的权重
+                        frontend_state_dict[key] = new_weight
+                else:
+                    if key in pretrained_state_dict:
+                        frontend_state_dict[key] = pretrained_state_dict[key]
+
+            self.frontend.load_state_dict(frontend_state_dict)
 
     def forward(self, x):
         x = self.frontend(x)
@@ -35,6 +52,9 @@ class CSRNet(nn.Module):
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
 
