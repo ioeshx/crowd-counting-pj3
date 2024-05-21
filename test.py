@@ -5,8 +5,9 @@ from model import CSRNet
 from torchvision import transforms
 from torch.autograd import Variable
 
-test_path = "./dataset/test/rgb/"
-img_paths = [f"{test_path}{i}.jpg" for i in range(1, 1001)]
+# 用红外光图像的路径
+test_path = "./dataset/test/tir/"
+img_paths = [f"{test_path}{i}R.jpg" for i in range(1, 1001)]
 
 model = CSRNet()
 model = model.cuda()
@@ -32,8 +33,13 @@ transform = transforms.Compose([
         0.229, 0.224, 0.225]),
 ])
 
+transform_tir = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+])
+
 for i in range(len(img_paths)):
-    img = transform((Image.open(img_paths[i]).convert('RGB')))
+    img = transform_tir((Image.open(img_paths[i]).convert('RGB')))
     img = img.cuda()
     img = Variable(img)
     output = model(img.unsqueeze(0))

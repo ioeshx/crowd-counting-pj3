@@ -62,8 +62,10 @@ class ImgDataset(Dataset):
         assert index <= len(self), 'index range error'
         img_path = self.img_paths[index]
         img_name = os.path.basename(img_path)
+        # 前面的img_path是红外图像，比可见光名字多了R
+        gt_name = os.path.splitext(img_name)[0].replace('R', '') + '.h5'
         gt_path = os.path.join(
-            self.gt_dir, os.path.splitext(img_name)[0] + '.h5')
+            self.gt_dir, gt_name)
         img, target = load_data(img_path, gt_path, self.train)
         if self.transform is not None:
             img = self.transform(img)
@@ -76,8 +78,9 @@ batch_size = 1  # 修改为4，加快训练
 momentum = 0.95
 decay = 5*1e-4
 epochs = 400
-steps = [-1, 1, 100, 150]
-scales = [1, 1, 1, 1]   # TODO2:scales是否需要调整？
+# TODO2:scales是否需要调整？
+steps = [-1, 1, 120, 200, 300]
+scales = [1, 1, 0.1, 0.1, 0.1]   
 workers = 4
 seed = time.time()
 print_freq = 30
@@ -86,7 +89,7 @@ img_dir = "./dataset/train/rgb/"
 tir_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
 # 训练中断时，可以从中间继续
-pre = None
+pre = "./model/checkpoint.pth.tar"
 task = ""
 
 
@@ -111,10 +114,14 @@ def main():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
                              0.229, 0.224, 0.225]),
     ])
+    transform_tir = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+    ])
     # TODO1:这里只用到了RGB图像
     dataset = ImgDataset(
-        img_dir,
-        gt_dir, transform=transform, train=True)
+        tir_dir,
+        gt_dir, transform=transform_tir, train=True)
 
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
@@ -125,6 +132,19 @@ def main():
         val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers)
     
     MAEs = {}
+    if pre:
+        if os.path.isfile(pre):
+            print("=> loading checkpoint '{}'".format(pre))
+            checkpoint = torch.load(pre)
+            start_epoch = checkpoint['epoch']
+            best_prec1 = checkpoint['best_prec1']
+            model.load_state_dict(checkpoint['state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            print("=> loaded checkpoint '{}' (epoch {})"
+                  .format(pre, checkpoint['epoch']))
+        else:
+            print("=> no checkpoint found at '{}'".format(pre))
+
     for epoch in range(start_epoch, epochs):
 
         adjust_learning_rate(optimizer, epoch)
