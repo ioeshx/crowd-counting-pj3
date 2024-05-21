@@ -80,6 +80,7 @@ img_dir = "./dataset/train/rgb/"
 # 新增红外图像路径 Thermal Imaging Radiometer
 tir_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
+# 训练中断时，可以从中间继续
 pre = None
 task = ""
 
@@ -93,7 +94,8 @@ def main():
     model = CSRNet()
 
     model = model.cuda()
-
+    # TODO3: criterion, optimizer和transform需要优化吗？
+    # 超参数优化？
     criterion = nn.MSELoss(size_average=False).cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), lr,
