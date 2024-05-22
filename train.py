@@ -138,6 +138,7 @@ def main():
         best_prec1 = min(prec1, best_prec1)
         print(' * best MAE {mae:.3f} '
               .format(mae=best_prec1))
+
         save_checkpoint({
             'epoch': epoch + 1,
             'arch': pre,
@@ -145,7 +146,13 @@ def main():
             'best_prec1': best_prec1,
             'optimizer': optimizer.state_dict(),
         }, is_best, task)
-    
+        
+        if epoch % 50 == 0:
+            with open('./pic/MAEs.json', 'w') as f:
+                json.dump(MAEs, f, indent=4)
+
+    with open('./pic/MAEs.json', 'w') as f:
+        json.dump(MAEs, f, indent=4)
     # 绘制MAEs曲线
     # 确保在使用 numpy 之前将张量移动到 CPU
 
