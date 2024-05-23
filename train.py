@@ -76,8 +76,8 @@ batch_size = 1  # 修改为4，加快训练
 momentum = 0.95
 decay = 5*1e-4
 epochs = 400
-steps = [-1, 1, 100, 150]
-scales = [1, 1, 1, 1]   # TODO2:scales是否需要调整？
+steps = [-1, 1, 100, 200, 300, 350]
+scales = [1, 1, 0.5, 0.2, 0.1, 0.1]   # TODO2:scales是否需要调整？
 workers = 4
 seed = time.time()
 print_freq = 30
@@ -132,7 +132,7 @@ def main():
         train(model, criterion, optimizer, epoch, train_loader)
         prec1 = validate(model, val_loader)
 
-        MAEs[epoch] = prec1 # 统计MAE
+        MAEs[epoch] = prec1.item() # 统计MAE
 
         is_best = prec1 < best_prec1
         best_prec1 = min(prec1, best_prec1)
