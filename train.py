@@ -72,12 +72,12 @@ class ImgDataset(Dataset):
 # 参数设置
 lr = 1e-7
 original_lr = lr
-batch_size = 1  # 修改为4，加快训练
+batch_size = 4  # 修改为4，加快训练
 momentum = 0.95
 decay = 5*1e-4
-epochs = 400
+epochs = 150
 steps = [-1, 1, 100, 200, 300, 350]
-scales = [1, 1, 0.5, 0.2, 0.1, 0.1]   # TODO2:scales是否需要调整？
+scales = [1, 1, 1, 1, 1, 1]   # TODO2:scales是否需要调整？
 workers = 4
 seed = time.time()
 print_freq = 30
@@ -150,8 +150,9 @@ def main():
         if epoch % 50 == 0:
             with open('./pic/MAEs.json', 'w') as f:
                 json.dump(MAEs, f, indent=4)
-
-    with open('./pic/MAEs.json', 'w') as f:
+        
+    time_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+    with open('./pic/MAEs-{}.json'.format(time_str), 'w') as f:
         json.dump(MAEs, f, indent=4)
     # 绘制MAEs曲线
     # 确保在使用 numpy 之前将张量移动到 CPU
